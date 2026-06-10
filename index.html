@@ -121,6 +121,8 @@
     white-space: nowrap;
   }
   .glink:hover { color: var(--text); border-color: var(--stroke-hi); }
+  button.glink { cursor: pointer; }
+  .glink svg { width: 13px; height: 13px; vertical-align: -2px; margin-right: 5px; }
 
   .burger { display: none; margin-left: auto; background: var(--glass); border: 1px solid var(--stroke); border-radius: 8px; width: 38px; height: 34px; cursor: pointer; padding: 0; position: relative; }
   .burger i { position: absolute; left: 10px; right: 10px; height: 1.5px; background: var(--text); border-radius: 1px; transition: transform .25s, opacity .2s, top .25s; }
@@ -431,6 +433,7 @@
     <div class="synced" id="synced"></div>
     <button class="burger" id="burger" aria-label="Menu"><i></i><i></i><i></i></button>
     <div class="head-stats" id="stats"></div>
+    <button class="glink desk" id="sndBtn" title="Sound effects on/off"></button>
     <a class="glink desk" href="guidelines.html">Guidelines ↗</a>
   </header>
 
@@ -450,6 +453,7 @@
     <div><h4>Pillars</h4><div class="chips" id="pillarChipsM"></div></div>
     <div><h4>Status</h4><div class="chips" id="statusChipsM"></div></div>
     <div id="pipeM"></div>
+    <button class="glink" id="sndBtnM"></button>
     <a class="glink" href="guidelines.html">Guidelines ↗</a>
   </aside>
 
@@ -535,6 +539,8 @@
     graph:  "M12 12m-2.5 0a2.5 2.5 0 1 0 5 0 2.5 2.5 0 1 0-5 0M12 9.5V4M14.2 13.8L19 18M9.8 13.8L5 18",
     board:  "M3 4h5v16H3zM10 4h5v10h-5zM17 4h5v7h-5z",
     list:   "M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01",
+    sndOn:  "M11 5L6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M18.4 5.6a9 9 0 0 1 0 12.8",
+    sndOff: "M11 5L6 9H2v6h4l5 4zM22 9l-6 6M16 9l6 6",
   };
   function uiIcon(k) {
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="' + UI[k] + '"/></svg>';
@@ -577,6 +583,41 @@
     t.textContent = msg; t.classList.add("show");
     clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 1800);
   }
+
+  /* ============================== sound (Kenney “Interface Sounds”, CC0) ============================== */
+  const SFX = (function () {
+    const FILES = { open: "open", close: "close", tick: "tick", switch: "switch", confirm: "confirm", menuOpen: "menu-open", menuClose: "menu-close", error: "error" };
+    const VOL = { tick: .14, switch: .16, open: .2, close: .18, confirm: .22, menuOpen: .16, menuClose: .16, error: .2 };
+    let ctx = null; const bufs = {};
+    let on = localStorage.getItem("sb-sound") !== "off";
+    function ensure() {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!ctx) {
+        ctx = new AC();
+        Object.keys(FILES).forEach(k => {
+          fetch("assets/sfx/" + FILES[k] + ".mp3")
+            .then(r => r.arrayBuffer())
+            .then(b => ctx.decodeAudioData(b))
+            .then(d => { bufs[k] = d; })
+            .catch(() => {});
+        });
+      }
+      if (ctx.state === "suspended") ctx.resume();
+    }
+    function play(name) {
+      if (!on) return;
+      ensure();
+      const b = bufs[name]; if (!b || !ctx) return;
+      const src = ctx.createBufferSource(); src.buffer = b;
+      const g = ctx.createGain(); g.gain.value = VOL[name] || .18;
+      src.connect(g); g.connect(ctx.destination); src.start();
+    }
+    function toggle() { on = !on; try { localStorage.setItem("sb-sound", on ? "on" : "off"); } catch (e) {} if (on) play("tick"); return on; }
+    // browsers only allow audio after a user gesture — warm the buffers on the first one
+    document.addEventListener("pointerdown", ensure, { once: true });
+    return { play, toggle, get on() { return on; } };
+  })();
 
   /* ============================== markdown ============================== */
   function inline(t) {
@@ -689,6 +730,7 @@
       if (c.dataset.all) { state.pillars.clear(); }
       else if (c.dataset.pillar) { const p = c.dataset.pillar; state.pillars.has(p) ? state.pillars.delete(p) : state.pillars.add(p); }
       else if (c.dataset.status) { const s = c.dataset.status; state.statuses.has(s) ? state.statuses.delete(s) : state.statuses.add(s); }
+      SFX.play("tick");
       renderChips(); rerender(); persist();
     });
   }
@@ -781,7 +823,7 @@
   function bindToolbar(el, s) {
     el.querySelectorAll("[data-act]").forEach(b => b.onclick = () => {
       const act = b.dataset.act;
-      if (act === "expand") { closeDrawer(); openReader(s.id); }
+      if (act === "expand") { closeDrawer(true); openReader(s.id); }
       if (act === "pdf") printScript(s);
       if (act === "copy") copyVoiceover(s);
     });
@@ -805,9 +847,13 @@
     document.getElementById("drawerBody").scrollTop = 0;
     document.getElementById("drawer").classList.add("open");
     document.getElementById("scrim").classList.add("open");
+    SFX.play("open");
   }
-  function closeDrawer() {
-    document.getElementById("drawer").classList.remove("open");
+  function closeDrawer(silent) {
+    const d = document.getElementById("drawer");
+    if (!d.classList.contains("open")) return;
+    if (!silent) SFX.play("close");
+    d.classList.remove("open");
     document.getElementById("scrim").classList.remove("open");
   }
 
@@ -824,8 +870,14 @@
     const r = document.getElementById("reader");
     r.scrollTop = 0;
     r.classList.add("open");
+    SFX.play("open");
   }
-  function closeReader() { document.getElementById("reader").classList.remove("open"); }
+  function closeReader() {
+    const r = document.getElementById("reader");
+    if (!r.classList.contains("open")) return;
+    SFX.play("close");
+    r.classList.remove("open");
+  }
 
   /* ============================== copy voiceover ============================== */
   function voiceoverOf(s) {
@@ -835,10 +887,10 @@
   }
   function copyVoiceover(s) {
     const vo = voiceoverOf(s);
-    if (!vo) { toast("No “## Voiceover” section found"); return; }
+    if (!vo) { SFX.play("error"); toast("No “## Voiceover” section found"); return; }
     (navigator.clipboard ? navigator.clipboard.writeText(vo) : Promise.reject()).then(
-      () => toast("Voiceover copied — paste it in your teleprompter"),
-      () => toast("Couldn’t copy on this browser")
+      () => { SFX.play("confirm"); toast("Voiceover copied — paste it in your teleprompter"); },
+      () => { SFX.play("error"); toast("Couldn’t copy on this browser"); }
     );
   }
 
@@ -885,6 +937,7 @@
 
     const old = document.title;
     document.title = s.id || "script";
+    SFX.play("confirm");
     window.print();
     setTimeout(() => { document.title = old; }, 600);
   }
@@ -915,13 +968,19 @@
     ["modeSeg", "modeSegM"].forEach(id => {
       const el = document.getElementById(id);
       el.innerHTML = html;
-      el.querySelectorAll("button").forEach(b => b.onclick = () => { setMode(b.dataset.mode); closeMenu(); });
+      el.querySelectorAll("button").forEach(b => b.onclick = () => { SFX.play("switch"); setMode(b.dataset.mode); closeMenu(); });
     });
   }
 
   /* ============================== phone menu ============================== */
-  function openMenu() { document.getElementById("menu").classList.add("open"); document.getElementById("burger").classList.add("open"); document.getElementById("scrim").classList.add("open"); }
-  function closeMenu() { document.getElementById("menu").classList.remove("open"); document.getElementById("burger").classList.remove("open"); if (!document.getElementById("drawer").classList.contains("open")) document.getElementById("scrim").classList.remove("open"); }
+  function openMenu() { SFX.play("menuOpen"); document.getElementById("menu").classList.add("open"); document.getElementById("burger").classList.add("open"); document.getElementById("scrim").classList.add("open"); }
+  function closeMenu() {
+    const m = document.getElementById("menu");
+    if (!m.classList.contains("open")) return;
+    SFX.play("menuClose");
+    m.classList.remove("open"); document.getElementById("burger").classList.remove("open");
+    if (!document.getElementById("drawer").classList.contains("open")) document.getElementById("scrim").classList.remove("open");
+  }
   function toggleMenu() { document.getElementById("menu").classList.contains("open") ? closeMenu() : openMenu(); }
 
   /* ============================== graph ============================== */
@@ -1243,9 +1302,9 @@
       if (e.type === "pointerup" && !pinch) {
         if (dragNode && !moved) {
           if (dragNode.type === "script") openScript(dragNode.id);
-          else { const p = dragNode.pillar; state.pillars.has(p) ? state.pillars.delete(p) : state.pillars.add(p); renderChips(); rerender(); persist(); }
+          else { const p = dragNode.pillar; state.pillars.has(p) ? state.pillars.delete(p) : state.pillars.add(p); SFX.play("tick"); renderChips(); rerender(); persist(); }
         } else if (panning && !moved && (state.pillars.size || state.statuses.size)) {
-          state.pillars.clear(); state.statuses.clear(); renderChips(); rerender(); persist();
+          state.pillars.clear(); state.statuses.clear(); SFX.play("tick"); renderChips(); rerender(); persist();
         }
       }
       dragNode = null; panning = false; canvas.classList.remove("grabbing");
@@ -1287,6 +1346,17 @@
       });
     }
     wireSearch("search"); wireSearch("searchM");
+
+    function updateSndBtns() {
+      const html = uiIcon(SFX.on ? "sndOn" : "sndOff") + (SFX.on ? "Sound on" : "Sound off");
+      ["sndBtn", "sndBtnM"].forEach(id => {
+        const el = document.getElementById(id);
+        el.innerHTML = html;
+        el.style.opacity = SFX.on ? "" : ".55";
+      });
+    }
+    updateSndBtns();
+    ["sndBtn", "sndBtnM"].forEach(id => document.getElementById(id).onclick = () => { SFX.toggle(); updateSndBtns(); });
 
     document.getElementById("burger").onclick = toggleMenu;
     document.getElementById("closeX").onclick = closeDrawer;

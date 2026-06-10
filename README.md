@@ -29,6 +29,10 @@ And on any script:
 On a phone the screen stays clear — pillars, statuses, search and views all live behind the
 hamburger menu.
 
+There are soft click sounds on actions (open, close, filter, copy…) — Kenney's CC0
+"Interface Sounds" pack, stored in `assets/sfx/`. The speaker button in the header (or the
+hamburger menu on phone) mutes them; it remembers your choice.
+
 ## How you work with it (through Claude)
 
 You don't hand-manage files. You just talk to Claude in this folder:
