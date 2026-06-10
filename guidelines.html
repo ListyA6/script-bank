@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Script Guidelines — Listy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    /* ---- shared with dashboard: warm paper + graphite ink ---- */
+    --bg: #e7e1d6;
+    --paper: #f4f1ea;
+    --panel: #f1ede5;
+    --panel-2: #e8e2d6;
+    --card: #faf7f1;
+    --card-hover: #fffdf8;
+
+    --text: #2a2d33;
+    --muted: #6b6f78;
+    --muted-2: #9b9689;
+    --accent: #2f6f5f;        /* muted pine = DO / sounds like him */
+    --accent-soft: #d7e3dc;
+    --danger: #9c4a4a;        /* clay red = BANNED / AI tell / never */
+    --danger-soft: #efdedb;
+    --gold: #a8924f;          /* highlight / non-negotiable star */
+
+    --border: rgba(42,45,51,.13);
+    --border-soft: rgba(42,45,51,.07);
+
+    --shadow-sm: 0 1px 2px rgba(60,50,35,.06);
+    --shadow-md: 0 10px 26px -14px rgba(60,50,35,.28), 0 2px 6px -3px rgba(60,50,35,.10);
+
+    --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+    --font: "Hanken Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono: "JetBrains Mono", "SF Mono", "Cascadia Code", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: -2; pointer-events: none;
+    background:
+      radial-gradient(1100px 620px at 50% -14%, rgba(255,253,247,.75), transparent 60%),
+      linear-gradient(180deg, #ece6db, #e2dccf);
+  }
+  body::after {
+    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    opacity: .30; mix-blend-mode: soft-light;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* ---------- reading progress ---------- */
+  .progress { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 60; background: transparent; }
+  .progress span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--gold)); transition: width .08s linear; }
+
+  /* ---------- hero ---------- */
+  .hero { padding: 70px 32px 30px; max-width: 1180px; margin: 0 auto; }
+  .eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: .22em; color: var(--muted-2); margin-bottom: 14px; }
+  .eyebrow a { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; transition: border-color .15s; }
+  .eyebrow a:hover { border-color: var(--accent); }
+  h1.title { font-family: var(--font-display); font-weight: 500; font-size: clamp(38px, 6vw, 66px); line-height: 1.02; letter-spacing: -.02em; margin: 0 0 18px; }
+  h1.title .dot { color: var(--accent); }
+  .lede { font-size: 17px; color: #3c4049; max-width: 660px; margin: 0; }
+  .lede b { color: var(--text); }
+  .spine {
+    margin: 26px 0 0; max-width: 720px; font-family: var(--font-display); font-style: italic;
+    font-size: 18px; line-height: 1.5; color: var(--muted);
+    border-left: 2px solid var(--accent); padding: 4px 0 4px 20px;
+  }
+  .spine b { color: var(--text); font-style: normal; font-weight: 500; }
+
+  /* ---------- legend ---------- */
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 10px; margin-top: 34px; }
+  .legend .key { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted);
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; }
+  .legend .sw { width: 9px; height: 9px; border-radius: 50%; }
+  .legend .sw.do { background: var(--accent); }
+  .legend .sw.no { background: var(--danger); }
+  .legend .star { color: var(--gold); font-size: 13px; }
+  .legend .qm { font-family: var(--font-display); font-style: italic; color: var(--accent); font-weight: 600; }
+
+  /* ---------- shell ---------- */
+  .shell { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 40px; max-width: 1180px; margin: 0 auto; padding: 22px 32px 120px; align-items: start; }
+
+  /* ---------- sticky nav ---------- */
+  nav.toc { position: sticky; top: 22px; max-height: calc(100vh - 44px); overflow-y: auto; padding-right: 6px; }
+  nav.toc .nav-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .14em; color: var(--muted-2); padding: 0 0 10px 14px; }
+  nav.toc a {
+    display: flex; align-items: baseline; gap: 11px; text-decoration: none; color: var(--muted);
+    padding: 6px 12px; border-radius: 8px; border-left: 2px solid transparent; font-size: 13.5px;
+    transition: color .14s, background .14s, border-color .14s; line-height: 1.3;
+  }
+  nav.toc a .n { font-family: var(--mono); font-size: 11px; color: var(--muted-2); min-width: 16px; }
+  nav.toc a:hover { color: var(--text); background: var(--panel); }
+  nav.toc a.active { color: var(--text); background: var(--card); border-left-color: var(--accent); font-weight: 600; box-shadow: var(--shadow-sm); }
+  nav.toc a.active .n { color: var(--accent); }
+  .toc-tail { margin-top: 14px; padding: 12px 14px 0; border-top: 1px solid var(--border-soft); font-size: 12px; color: var(--muted-2); }
+  .toc-tail a { color: var(--accent); text-decoration: none; }
+  .toc-tail a:hover { text-decoration: underline; }
+
+  /* ---------- sections ---------- */
+  main { min-width: 0; }
+  section { scroll-margin-top: 22px; padding: 26px 0 8px; border-top: 1px solid var(--border-soft); }
+  section:first-child { border-top: none; padding-top: 6px; }
+  .sec-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 6px; }
+  .sec-num { font-family: var(--font-display); font-size: 30px; font-weight: 400; color: var(--muted-2); line-height: 1; letter-spacing: -.01em; }
+  h2.sec-title { font-family: var(--font-display); font-size: 26px; font-weight: 500; letter-spacing: -.012em; margin: 0; line-height: 1.12; }
+  .sec-sub { color: var(--muted); font-size: 14px; margin: 4px 0 18px; }
+  h3 { font-family: var(--font-display); font-size: 17px; font-weight: 600; margin: 26px 0 10px; letter-spacing: -.005em; }
+  p { margin: 12px 0; color: #3c4049; }
+  main strong, p strong, li strong { color: var(--text); font-weight: 700; }
+  a { color: var(--accent); }
+
+  /* lists */
+  ul.clean { list-style: none; padding: 0; margin: 14px 0; }
+  ul.clean > li { position: relative; padding: 8px 0 8px 26px; border-bottom: 1px solid var(--border-soft); color: #3c4049; }
+  ul.clean > li:last-child { border-bottom: none; }
+  ul.clean > li::before { content: ""; position: absolute; left: 4px; top: 16px; width: 7px; height: 7px; border-radius: 50%; background: var(--muted-2); }
+
+  /* his words */
+  .said { font-family: var(--font-display); font-style: italic; color: var(--accent); }
+  q.said { quotes: "“" "”"; }
+
+  /* ---------- non-negotiable rule cards (§1) ---------- */
+  .rules { display: grid; gap: 12px; margin: 18px 0 6px; counter-reset: rule; }
+  .rule {
+    position: relative; background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--danger);
+    border-radius: 11px; padding: 15px 17px 15px 56px; box-shadow: var(--shadow-sm);
+  }
+  .rule::before {
+    counter-increment: rule; content: counter(rule);
+    position: absolute; left: 16px; top: 14px; width: 26px; height: 26px; border-radius: 50%;
+    background: var(--danger-soft); color: var(--danger); font-family: var(--mono); font-size: 13px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .rule .r-lede { font-weight: 700; color: var(--text); }
+  .rule p { margin: 4px 0 0; font-size: 14px; }
+  .rule .ref { color: var(--muted-2); font-size: 12.5px; }
+
+  /* ---------- do / don't callouts ---------- */
+  .callout { border-radius: 11px; padding: 14px 16px 14px 18px; margin: 16px 0; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+  .callout .c-head { display: flex; align-items: center; gap: 9px; font-size: 11px; text-transform: uppercase; letter-spacing: .12em; font-weight: 700; margin-bottom: 8px; }
+  .callout .c-head .ic { width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+  .callout.do { background: linear-gradient(180deg, #eef3ef, var(--card)); border-left: 3px solid var(--accent); }
+  .callout.do .c-head { color: var(--accent); }
+  .callout.do .ic { background: var(--accent); color: #fff; }
+  .callout.no { background: linear-gradient(180deg, #f4e7e4, var(--card)); border-left: 3px solid var(--danger); }
+  .callout.no .c-head { color: var(--danger); }
+  .callout.no .ic { background: var(--danger); color: #fff; }
+  .callout p:first-of-type { margin-top: 0; }
+  .callout p:last-child { margin-bottom: 0; }
+
+  /* banned chips */
+  .banned-words { display: flex; flex-wrap: wrap; gap: 7px; margin: 10px 0 2px; }
+  .banned-words span { font-family: var(--mono); font-size: 12px; color: var(--danger); background: var(--danger-soft);
+    border: 1px solid rgba(156,74,74,.25); border-radius: 6px; padding: 3px 9px; text-decoration: line-through; text-decoration-color: rgba(156,74,74,.5); }
+
+  /* ---------- compare table (sounds like him / not) ---------- */
+  table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 14px; }
+  th, td { border: 1px solid var(--border); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--panel-2); color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 10.5px; letter-spacing: .07em; }
+  td { color: #3c4049; }
+  tr:nth-child(even) td { background: rgba(42,45,51,.022); }
+  .mono-cell { font-family: var(--mono); font-size: 12px; }
+  .cmp th:first-child { color: var(--accent); }
+  .cmp th:last-child { color: var(--danger); }
+  .cmp td:first-child { background: rgba(47,111,95,.05); }
+  .cmp td:last-child { background: rgba(156,74,74,.05); }
+  .cmp td.said-cell { font-family: var(--font-display); font-style: italic; }
+
+  /* beat sheet emphasis */
+  table.beats td:first-child { font-weight: 700; color: var(--text); white-space: nowrap; }
+  table.beats td:nth-child(2) { font-family: var(--mono); font-size: 12px; color: var(--accent); white-space: nowrap; }
+
+  /* ---------- tags ---------- */
+  .tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
+  .hooktag { font-family: var(--mono); font-size: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 3px 9px; color: var(--text); }
+
+  /* hook-type list */
+  dl.defs { margin: 14px 0; display: grid; gap: 0; }
+  dl.defs > div { display: grid; grid-template-columns: 150px 1fr; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--border-soft); }
+  dl.defs > div:last-child { border-bottom: none; }
+  dl.defs dt { font-family: var(--mono); font-size: 12.5px; color: var(--accent); padding-top: 1px; }
+  dl.defs dd { margin: 0; color: #3c4049; font-size: 14px; }
+
+  /* numbered exits (endings) */
+  ol.exits { list-style: none; counter-reset: ex; padding: 0; margin: 14px 0; display: grid; gap: 9px; }
+  ol.exits li { position: relative; counter-increment: ex; padding: 11px 14px 11px 46px; background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px; font-size: 14px; }
+  ol.exits li::before { content: counter(ex); position: absolute; left: 13px; top: 11px; width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-family: var(--mono); font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+  ol.exits li b { color: var(--text); }
+
+  /* checklist (gut-check) */
+  .checklist { margin: 16px 0; display: grid; gap: 8px; }
+  .checklist label { display: flex; gap: 12px; align-items: flex-start; padding: 11px 14px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; box-shadow: var(--shadow-sm); transition: background .14s, border-color .14s; }
+  .checklist label:hover { background: var(--card-hover); border-color: rgba(42,45,51,.22); }
+  .checklist input { appearance: none; -webkit-appearance: none; min-width: 19px; height: 19px; margin-top: 1px; border: 1.5px solid var(--muted-2); border-radius: 6px; background: var(--paper); cursor: pointer; position: relative; transition: background .14s, border-color .14s; }
+  .checklist input:checked { background: var(--accent); border-color: var(--accent); }
+  .checklist input:checked::after { content: "\2713"; position: absolute; inset: 0; color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .checklist label .ck-body { font-size: 14px; color: #3c4049; }
+  .checklist label .ck-body b { color: var(--text); }
+  .checklist input:checked ~ .ck-body { color: var(--muted-2); }
+  .checklist input:checked ~ .ck-body b { color: var(--muted); }
+
+  /* worked example specimen */
+  .specimen { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 4px 22px 18px; margin: 18px 0; box-shadow: var(--shadow-md); }
+  .spec-brief { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0; }
+  .spec-brief .b { font-size: 12px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px; color: var(--muted); }
+  .spec-brief .b b { color: var(--text); }
+  ol.hooks { list-style: none; counter-reset: hk; padding: 0; margin: 12px 0; display: grid; gap: 7px; }
+  ol.hooks li { position: relative; counter-increment: hk; padding: 9px 13px 9px 40px; border: 1px solid var(--border-soft); border-radius: 9px; font-size: 14px; color: var(--muted); background: var(--panel); }
+  ol.hooks li::before { content: counter(hk); position: absolute; left: 12px; top: 9px; width: 20px; height: 20px; border-radius: 50%; background: var(--panel-2); color: var(--muted); font-family: var(--mono); font-size: 11px; display: flex; align-items: center; justify-content: center; }
+  ol.hooks li.chosen { background: linear-gradient(180deg, #eef3ef, var(--card)); border-color: var(--accent); color: var(--text); font-weight: 500; }
+  ol.hooks li.chosen::before { background: var(--accent); color: #fff; }
+  ol.hooks li .pick { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); margin-left: 8px; }
+  .vo { background: var(--paper); border-left: 3px solid var(--gold); border-radius: 0 10px 10px 0; padding: 14px 18px; margin: 12px 0; font-family: var(--font-display); font-size: 16px; line-height: 1.6; color: var(--text); }
+  .vo em { color: var(--accent); }
+  .why { display: grid; gap: 12px; margin-top: 8px; }
+
+  /* footer */
+  footer { max-width: 1180px; margin: 0 auto; padding: 30px 32px 80px; }
+  .footnote { font-size: 13px; color: var(--muted); font-style: italic; border-top: 1px solid var(--border); padding-top: 22px; max-width: 720px; }
+  .footnote code { font-family: var(--mono); font-style: normal; background: var(--panel-2); padding: 1px 6px; border-radius: 5px; color: var(--accent); font-size: 12px; }
+
+  code { font-family: var(--mono); background: var(--panel-2); padding: 1px 6px; border-radius: 5px; font-size: 13px; color: var(--accent); }
+
+  ::-webkit-scrollbar { width: 11px; height: 11px; }
+  ::-webkit-scrollbar-thumb { background: rgba(42,45,51,.2); border-radius: 7px; border: 3px solid transparent; background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(42,45,51,.32); background-clip: padding-box; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  /* responsive */
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; gap: 8px; }
+    nav.toc { position: static; max-height: none; margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 4px; background: var(--panel); border: 1px solid var(--border-soft); border-radius: 12px; padding: 12px; }
+    nav.toc .nav-label, .toc-tail { width: 100%; }
+    nav.toc a { border-left: none; border-bottom: 2px solid transparent; padding: 5px 9px; }
+    nav.toc a.active { border-left: none; border-bottom-color: var(--accent); }
+    .hero { padding-top: 46px; }
+    dl.defs > div { grid-template-columns: 1fr; gap: 2px; }
+  }
+</style>
+</head>
+<body>
+  <div class="progress"><span id="bar"></span></div>
+
+  <header class="hero">
+    <div class="eyebrow">Script Bank &nbsp;·&nbsp; the rulebook &nbsp;·&nbsp; <a href="dashboard.html">← back to the board</a></div>
+    <h1 class="title">Script Guidelines<span class="dot">.</span></h1>
+    <p class="lede">How you write a script that sounds like <b>Listy</b>. Everything here got boiled down from the 13 research notes, so if you only read one file before writing, read this. <b>The notes are the evidence. This is the law.</b></p>
+    <p class="spine">When in doubt, read the line out loud at talking speed and ask: <b>would a tired 28-year-old who runs restaurants and writes software actually say this? Or did a content calendar?</b></p>
+
+    <div class="legend" aria-label="colour key">
+      <span class="key"><span class="sw do"></span> Do / sounds like him</span>
+      <span class="key"><span class="sw no"></span> Banned / AI tell / never</span>
+      <span class="key"><span class="star">★</span> Non-negotiable (break one, it's dead)</span>
+      <span class="key"><span class="qm">“ ”</span> His actual words</span>
+    </div>
+  </header>
+
+  <div class="shell">
+    <nav class="toc" id="toc">
+      <div class="nav-label">Sections</div>
+      <a href="#s0"><span class="n">0</span><span>Who he is</span></a>
+      <a href="#s1"><span class="n">1</span><span>The non-negotiables&nbsp;★</span></a>
+      <a href="#s2"><span class="n">2</span><span>Voice fingerprint</span></a>
+      <a href="#s3"><span class="n">3</span><span>Structure &amp; pacing</span></a>
+      <a href="#s4"><span class="n">4</span><span>The numbers rule</span></a>
+      <a href="#s5"><span class="n">5</span><span>Spoken register</span></a>
+      <a href="#s6"><span class="n">6</span><span>Endings</span></a>
+      <a href="#s7"><span class="n">7</span><span>Hooks</span></a>
+      <a href="#s8"><span class="n">8</span><span>B-roll &amp; proof</span></a>
+      <a href="#s9"><span class="n">9</span><span>Captions &amp; text</span></a>
+      <a href="#s10"><span class="n">10</span><span>CTA</span></a>
+      <a href="#s11"><span class="n">11</span><span>ESL delivery</span></a>
+      <a href="#s12"><span class="n">12</span><span>The gut-check</span></a>
+      <a href="#s13"><span class="n">13</span><span>Worked example</span></a>
+      <div class="toc-tail">Source of record: the 13 files in <a href="#foot">researchnotes/</a>.</div>
+    </nav>
+
+    <main>
+      <!-- 0 -->
+      <section id="s0">
+        <div class="sec-head"><span class="sec-num">0</span><h2 class="sec-title">Who he is</h2></div>
+        <p class="sec-sub">So the voice has a spine.</p>
+        <p><b>Listy.</b> 28, Indonesian, male. Runs an agency that builds <b>custom automation software</b> for real businesses. POS, inventory, booking, order systems, all tuned to one company's actual workflow. He also runs restaurants (LalaFun <span class="said">ayam geprek</span>, Floural bread, Kosolo noodles), and he's killed ventures too. SaraFun, closed. Before all of this he ran a design / branding / web agency.</p>
+        <p>His edge over a normal dev is simple: <b>he's felt the operational pain himself.</b> He's lived the kitchen, the payroll, the supplier, the 7pm queue. So when he systemizes something, it's the actual bottleneck, not the one a developer imagines from a desk. He can build for studio bookings, a bakery, a noodle shop, because he sits with the operator until he finds the real friction.</p>
+        <div class="callout do">
+          <div class="c-head"><span class="ic">✓</span> Positioning</div>
+          <p><b>Operator who builds</b>, not authority. He's somewhere between 3 months and a year in, so he's not a teacher on a stage. He's a guy reporting from the field. Camera-shy too, which is why it's mostly voiceover + B-roll. And this is a <b>personal-brand</b> channel. The businesses are proof and fuel, but the subject is him, building and running things in public.</p>
+        </div>
+      </section>
+
+      <!-- 1 -->
+      <section id="s1">
+        <div class="sec-head"><span class="sec-num">1</span><h2 class="sec-title">The non-negotiables&nbsp;<span style="color:var(--gold);font-size:20px">★</span></h2></div>
+        <p class="sec-sub">Break one and the script is dead. Read every draft line by line against these seven.</p>
+        <div class="rules">
+          <div class="rule"><span class="r-lede">Never speak a rupiah / revenue figure out loud.</span><p>Money lives on the <b>screen</b> as a proof shot, never in the voiceover. The only numbers his mouth says are counts and dates. Plates, staff, months, "the 11th," "three days." Saying your own revenue out loud is flex-y and weird, and he hates it. <span class="ref">(See §4.)</span></p></div>
+          <div class="rule"><span class="r-lede">No crafted closing line. Just stop.</span><p>Real reels don't button the ending. End on the last real thing that happened, said plainly, and the video stops. If the last line feels a little unfinished, good, that means it's right. <span class="ref">(See §6 — the rule most drafts break.)</span></p></div>
+          <div class="rule"><span class="r-lede">Don't state the lesson.</span><p>End on the <i>thing</i> and let the viewer make the point themselves. The moral should land in their head half a second <i>after</i> the video ends, never from his mouth.</p></div>
+          <div class="rule"><span class="r-lede">No guru words.</span><p>Banned:</p><div class="banned-words"><span>synergy</span><span>leverage</span><span>scale to 7 figures</span><span>unlock</span><span>transformation</span><span>journey</span><span>ecosystem</span><span>disruptive</span><span>value-add</span><span>game-changing</span><span>next-level</span><span>level up</span><span>crush it</span><span>dream bigger</span><span>mindset</span></div></div>
+          <div class="rule"><span class="r-lede">No AI tells.</span><p>No em dashes, use a period or a comma instead. No "it's not X, it's Y" as a close, and at most once anywhere inside a script. No perfect parallel triplets. No essay transitions like "with that in mind," "moving on to," "it's worth noting."</p></div>
+          <div class="rule"><span class="r-lede">Every claim gets an object, a number, or a date.</span><p>Adjectives don't carry weight here, specifics do. "It took a while" becomes "three months." "It did well" becomes show the screen.</p></div>
+          <div class="rule"><span class="r-lede">Don't chop it into staccato.</span><p>"One offer. Zero clients. That's it." is its own AI tell. The 4–9 word target is about <i>clauses</i>, so chain them into real sentences with <i>and / so / because / which is why</i>. And vary the length hard. <span class="ref">(See §5.)</span></p></div>
+        </div>
+      </section>
+
+      <!-- 2 -->
+      <section id="s2">
+        <div class="sec-head"><span class="sec-num">2</span><h2 class="sec-title">Voice fingerprint</h2></div>
+        <p class="sec-sub">How Listy actually talks, built from his own words. These patterns separate "sounds like him" from "sounds like the generic builder guy."</p>
+        <ul class="clean">
+          <li><b>Statement, then the complication.</b> His natural unit is <code>declaration + but/so/except</code>. The complication is the honest part. <q class="said">Once I start, it rolls. But starting is hard.</q> Declaration = hook, complication = re-hook.</li>
+          <li><b>Name the loop in real time.</b> He steps back and labels the pattern he's stuck in while he's in it. <q class="said">It's looping.</q> <q class="said">My stupid brain delays it to the perfect time. Which never comes.</q> His strongest move. The mid-video pull-back where he names the thing the viewer is stuck in too.</li>
+          <li><b>Correction mid-sentence, not after.</b> He revises his reasoning inside the sentence. <q class="said">I think I'm avoiding failure. Not sure that's the real reason.</q> Write the confident version, then add one short deflating clause. One. Not a paragraph of hedging.</li>
+          <li><b>"It feels like" is a specific tool</b>, not filler. He uses it to mark something he doesn't fully understand yet, vs. "I think" when he has a theory. Don't swap one for the other.</li>
+          <li><b>Dry self-criticism, then the mechanic.</b> "My brain does this. Here's what I do about it." Never "it's been such a hard journey." Quick, dry, move on.</li>
+          <li><b>Analogy through lived systems, not metaphor.</b> Show the concrete thing, then label it. <q class="said">Miss 7am, wait for 7:30, then 8, then tomorrow. ADHD logic.</q></li>
+          <li><b>Numbers ground a cost or a decision, never status.</b> The number attaches to the object, not to him. <q class="said">LalaFun, the busy one</q>, never "my 130-juta restaurant."</li>
+          <li><b>Doubt without retreat.</b> He states the fear, measures it, continues anyway. <q class="said">Worst case? One more failure in the bucket.</q> Named, sized, then walked past. It never cancels the action.</li>
+          <li><b>Hedges are semantic, not weak.</b> "basically," "kind of," "pretty much" mark an approximation. Keep them on approximations. They make him sound honest, not unsure.</li>
+        </ul>
+
+        <h3>Sounds like him / doesn't</h3>
+        <table class="cmp">
+          <thead><tr><th>Sounds like him</th><th>Does NOT sound like him</th></tr></thead>
+          <tbody>
+            <tr><td class="said-cell">"Once I start, it rolls. But starting is hard."</td><td>"The key is building momentum through habit."</td></tr>
+            <tr><td class="said-cell">"Marketing first. There's no other way."</td><td>"I realized I needed to prioritize go-to-market."</td></tr>
+            <tr><td class="said-cell">"We were productive in the MikroFarm era."</td><td>"We achieved exceptional output that chapter."</td></tr>
+            <tr><td class="said-cell">"Worst case, one more failure in the bucket."</td><td>"Every setback is a stepping stone."</td></tr>
+            <tr><td class="said-cell">"Same energy, different surface."</td><td>"It was a complex interplay of factors."</td></tr>
+          </tbody>
+        </table>
+        <div class="callout do">
+          <div class="c-head"><span class="ic">✓</span> Person ratio</div>
+          <p><b>~70% I &nbsp;/&nbsp; 20% we</b> (team, staff, GF) <b>/ 10% you.</b> "You" only shows up at the very end as a small invitation, never as instruction.</p>
+        </div>
+      </section>
+
+      <!-- 3 -->
+      <section id="s3">
+        <div class="sec-head"><span class="sec-num">3</span><h2 class="sec-title">Structure &amp; pacing</h2></div>
+        <p class="sec-sub">The 45s spine. Default 45s (~95–130 words). 30s = 65–75 words. 60s = 130–145 words.</p>
+        <table class="beats">
+          <thead><tr><th>Beat</th><th>Time</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td>Hook</td><td>0–3s</td><td>A claim, a number on screen, or the thing itself. Open a loop. Face, tight.</td></tr>
+            <tr><td>Context</td><td>3–8s</td><td>Why it matters / the situation. Cut to B-roll, voice continues.</td></tr>
+            <tr><td>Body A</td><td>8–15s</td><td>First concrete proof point. Not abstract.</td></tr>
+            <tr><td>Re-hook</td><td>15–17s</td><td>"But here's where it broke." Snap to face ~2s. Fights the 15s cliff.</td></tr>
+            <tr><td>Body B</td><td>17–28s</td><td>Second proof / the twist. Different B-roll than A.</td></tr>
+            <tr><td>Re-hook 2</td><td>28–32s</td><td>Face return ~2–3s, slower. Sets up the resolve. Fights the 30s drift.</td></tr>
+            <tr><td>Payoff</td><td>32–40s</td><td>Resolve the opening loop. One concrete line.</td></tr>
+            <tr><td>Close</td><td>40–45s</td><td>Stop on the last real thing. No crafted button. (See §6.)</td></tr>
+          </tbody>
+        </table>
+        <ul class="clean">
+          <li><b>Open a loop in the first sentence and don't resolve it until ~70–80%.</b> If the hook gives away the payoff there's no loop, and they're gone by second 8.</li>
+          <li><b>Pacing envelope: rapid → slow → rapid.</b> Tight cuts 0–8s, let the proof breathe 8–28s (2–3s holds), then bring the energy back 28–45s. New creators hold intro-energy the whole way through and it's exhausting to watch.</li>
+          <li><b>Re-hooks have to carry new information.</b> A face-return at 30s that says nothing makes the viewer feel tricked.</li>
+        </ul>
+      </section>
+
+      <!-- 4 -->
+      <section id="s4">
+        <div class="sec-head"><span class="sec-num">4</span><h2 class="sec-title">The numbers rule</h2></div>
+        <p class="sec-sub">Read this twice. It's the rule that gets broken the most, and the one Listy cares about most.</p>
+        <ul class="clean">
+          <li><b>Rupiah and revenue never appear in the spoken track.</b> They live on screen as a proof shot. A POS day-total, a Stripe chart, GoFood orders, a bank notification, with the key number circled. The voice keeps talking <i>underneath</i> and never announces the figure.</li>
+          <li><b>In the voice, scale gets words, not digits.</b> "My busiest shop." "The small one." "The kitchen that supplies the other two." Never "my 130-juta restaurant."</li>
+          <li><b>The only spoken numbers are counts and dates.</b> "Fourteen people." "1,200 plates a day." "Three months." "Closed it on the 7th." "I've got three days." Those don't read as flex.</li>
+          <li><b>When a number has to be shown, frame it as a cost or a responsibility, not a win.</b> Pair it with payroll, rent, tax. "This pays 14 people" lands. "We did 130 juta" flexes. Let the viewer do the bragging in the comments.</li>
+          <li><b>Round down, never up.</b> "About 130," not "131.4." And on screen, real and slightly messy (other tabs visible, a real timestamp) beats a clean mocked PNG. A screenshot with no visible source now reads as <i>negative</i> proof.</li>
+        </ul>
+      </section>
+
+      <!-- 5 -->
+      <section id="s5">
+        <div class="sec-head"><span class="sec-num">5</span><h2 class="sec-title">Spoken register</h2></div>
+        <p class="sec-sub">Write for the mouth, not the page. The unit is a <b>2–7 word clause</b>, but those clauses are <i>chained</i> into real sentences. Both halves matter.</p>
+        <ul class="clean">
+          <li><b>Contract everything.</b> it's, I'm, don't, that's, here's. Nobody says "do not" out loud.</li>
+          <li><b>Open sentences with And / So / But / Now.</b> That's ~15% of real sentence starts, and it does the job "furthermore / however / therefore" do in writing, minus the stiffness.</li>
+          <li><b>Zero formal connectors.</b> <span class="banned-words" style="display:inline-flex;vertical-align:middle;"><span>however</span><span>therefore</span><span>furthermore</span><span>moreover</span><span>thus</span><span>hence</span><span>nevertheless</span><span>in conclusion</span></span> These show up exactly zero times in 14,000 words of real viral speech. Use But / So / And / Now instead.</li>
+          <li><b>Chain, then snap.</b> Run a long messy clause-chain ("...to the point that I hired someone whose whole job is just X"), then cut to something short. Vary the length <i>hard</i>. Every line clipped is just as wrong as all run-ons.</li>
+          <li><b>Active voice always.</b> "Early investors outperform," not "it has been shown that..."</li>
+          <li><b>One rhetorical question max</b>, right before the key point or at the hook. Then answer it. Never leave it hanging for drama.</li>
+          <li><b>Light discourse markers welcome:</b> honestly, look, basically, kind of, pretty much, man. One internet-voice phrase per video max (it just works / nobody cares / ship it).</li>
+        </ul>
+      </section>
+
+      <!-- 6 -->
+      <section id="s6">
+        <div class="sec-head"><span class="sec-num">6</span><h2 class="sec-title">Endings</h2></div>
+        <p class="sec-sub">The make-or-break. Listy's #1 complaint about drafts: closes that "try to make a point." He's right, they read as AI.</p>
+        <p><b>The diagnosis:</b> an AI close is <i>on-the-nose</i>. It says the moral out loud and hands it to the viewer. Real people almost never button a story with its own thesis, so when a script does, it stops sounding like a person.</p>
+        <div class="callout do">
+          <div class="c-head"><span class="ic">✓</span> First-choice move — don't write a close at all</div>
+          <p>End on the last real thing that happens, say it plainly, stop. Even a "natural-sounding" button ("so I started on a Thursday") is still <i>writing a close</i>, and it reads as AI. If the final line feels slightly unfinished, you did it right.</p>
+        </div>
+        <p>If you do shape an exit, pick exactly <b>one</b> of these six. None of them states a lesson.</p>
+        <ol class="exits">
+          <li><b>End on the concrete detail.</b> Stop on the physical thing and let the meaning sit underneath. <q class="said">So that's my week. Writing down exactly how much salt goes in the broth.</q></li>
+          <li><b>Undercut / deflate.</b> Puncture your own seriousness. <q class="said">Anyway. Back to it.</q> · <q class="said">I'll probably still mess it up.</q></li>
+          <li><b>Trail off.</b> <q class="said">We'll see if two new cooks can read my handwriting.</q> · <q class="said">Ask me in December.</q></li>
+          <li><b>Hard-stop on a fact.</b> A concrete figure (count/date, never rupiah spoken) with zero commentary. <q class="said">Last day's the 11th. I've got a notebook and three days.</q></li>
+          <li><b>Literal callback.</b> Loop back to the opening image and say it flat. Don't reword it into a metaphor. <q class="said">Back to the same recipe.</q></li>
+          <li><b>Understate it.</b> Say the smaller, flatter version and let the weight stay implied. <q class="said">Cheaper than the next one would've been.</q></li>
+        </ol>
+        <div class="callout no">
+          <div class="c-head"><span class="ic">✕</span> Banned closes — read as AI every time</div>
+          <ul class="clean" style="margin:4px 0 0;">
+            <li>"It's not X, it's Y."</li>
+            <li>"I'd rather [X] than [Y]." (symmetric trade-off)</li>
+            <li>Stating the theme: "a business shouldn't live in one person's head."</li>
+            <li>Matched-pair aphorism: "The folder remembers. I just decide."</li>
+            <li>Ending on an abstract noun: "That's the bet." "That's discipline." "That's the timestamp."</li>
+            <li>Any line built to be screenshotted on a motivational graphic. If it'd look at home on a poster, kill it.</li>
+          </ul>
+        </div>
+        <p><b>The test:</b> read the close out loud. Is it <i>stating the lesson</i> or <i>ending on a thing</i>? If you can hear the moral being announced, rewrite to a concrete detail, an undercut, or an unfinished thread.</p>
+      </section>
+
+      <!-- 7 -->
+      <section id="s7">
+        <div class="sec-head"><span class="sec-num">7</span><h2 class="sec-title">Hooks</h2></div>
+        <p class="sec-sub">First 3 seconds. Open on a scene or a claim. Never a logo, never an intro card, never "hey guys." Ship it in ≤3s and keep it specific. <b>Write 5+ variants per script, then pick one.</b></p>
+        <p>Hook types (match <code>hook_type</code> in frontmatter):</p>
+        <dl class="defs">
+          <div><dt>receipts</dt><dd>number/result first, proof shot in seconds 2–4. (Number on SCREEN.)</dd></div>
+          <div><dt>build-reveal</dt><dd>"I built X in Y." Cut to the working thing.</dd></div>
+          <div><dt>contrarian</dt><dd>a take you've lived the scar tissue for.</dd></div>
+          <div><dt>curiosity</dt><dd>specific promise, withheld payoff. Payoff must be a real tactic/number.</dd></div>
+          <div><dt>pain-mirror</dt><dd>name a private fear out loud, then show the fix from your own build.</dd></div>
+          <div><dt>fail-story</dt><dd>public loss with a date and a number. Unfakeable for an operator.</dd></div>
+          <div><dt>bts</dt><dd>open on the actual screen/kitchen, not your face.</dd></div>
+          <div><dt>listicle</dt><dd>3–5 only, tactical, fast cuts.</dd></div>
+          <div><dt>hot-take</dt><dd>category-specific opinion you can defend through the whole video.</dd></div>
+          <div><dt>before-after</dt><dd>visual delta (dashboard, design, day-1 vs day-30).</dd></div>
+        </dl>
+        <div class="callout do">
+          <div class="c-head"><span class="ic">✓</span> The rule</div>
+          <p>Show face when the hook is a <b>claim</b>. Cut to the screen when the hook is <b>proof</b>.</p>
+        </div>
+      </section>
+
+      <!-- 8 -->
+      <section id="s8">
+        <div class="sec-head"><span class="sec-num">8</span><h2 class="sec-title">B-roll &amp; proof</h2></div>
+        <p class="sec-sub">The operator's unfair advantage. Something on screen changes every 1.5–3s. And every B-roll clip earns its place by <i>proving</i> a claim. If it doesn't prove or punctuate, cut it.</p>
+        <p><b>Listy's moat:</b> he has both dashboards and a physical ops floor. Cut between a Stripe chart and a wok firing in the same 30 seconds, because that contrast <i>is</i> the brand. Shoot both worlds.</p>
+        <h3>Vocabulary (each says something)</h3>
+        <ul class="clean">
+          <li><b>screenshare / code</b> = "I built this"</li>
+          <li><b>POS / metrics</b> = authority (1–2s)</li>
+          <li><b>product-in-hand</b> = "this is real"</li>
+          <li><b>kitchen / ops / staff</b> = "I run things." This one's the moat.</li>
+          <li><b>phone-UI</b> = customer experience</li>
+          <li><b>whiteboard</b> = "I think in systems"</li>
+          <li><b>throwbacks</b> = "I earned the right"</li>
+        </ul>
+        <div class="callout do">
+          <div class="c-head"><span class="ic">✓</span> Translate restaurant proof for a tech audience</div>
+          <p>POS daily report = "this is our Stripe." 7pm queue = the hockey stick. Repeat-order receipts = retention cohort. 14 staff at briefing = the team page. Say it out loud: <q class="said">You ship code. I ship 1,200 plates a day. Same loop.</q></p>
+        </div>
+        <h3>The proof-shot pattern</h3>
+        <p>Mid-video the talking head shrinks/freezes, a real screenshot slams full-frame with the key number circled, hold 1.5–2s, back to face. Land it on a claim, not a tangent. One key number, circled. Keep the audio talking underneath. <b>Max two per video.</b></p>
+      </section>
+
+      <!-- 9 -->
+      <section id="s9">
+        <div class="sec-head"><span class="sec-num">9</span><h2 class="sec-title">Captions &amp; on-screen text</h2></div>
+        <ul class="clean">
+          <li><b>Default style:</b> sentence-chunked 3–5 word phrases (builder content). Karaoke word-by-word only for a hype beat. One pinned top line = the hook restated, held 5–10s.</li>
+          <li><b>Font:</b> one clean sans (Inter / Geist / SF Pro), locked weight+size+stroke, reused every video. Mono/tabular figures for numbers so digits don't jitter. One accent color for highlights. No emojis, no rainbow, no platform-default preset.</li>
+          <li><b>Highlight 1–2 words per phrase.</b> Nouns, numbers, names, action verbs. Never articles.</li>
+          <li><b>Numbers are a design element:</b> count-up on first reveal only, pair with a unit chip ("3 <b>restaurants</b>"), hold 1.5–2s so it can be screenshotted.</li>
+          <li><b>Bilingual:</b> English captions always, since the builder audience is international. Indonesian VO is fine, just burn English captions and let the accent be texture. Keep dish, place and brand names in Indonesian, untranslated (<span class="said">ayam geprek</span>, <span class="said">Kediri</span>, <span class="said">warung</span>).</li>
+        </ul>
+      </section>
+
+      <!-- 10 -->
+      <section id="s10">
+        <div class="sec-head"><span class="sec-num">10</span><h2 class="sec-title">CTA</h2></div>
+        <div class="callout do">
+          <div class="c-head"><span class="ic">✓</span> Default: no hard CTA</div>
+          <p>The work is the CTA. If the last frame already provokes "who is this guy," shut up.</p>
+        </div>
+        <ul class="clean">
+          <li>If you use one, make it <b>soft, conditional, identity-based</b>, placed AFTER the payoff: <q class="said">If you build things on weekends, this account's for you.</q> Never "follow now for more dev tips." One CTA max. Never read it louder than the rest.</li>
+          <li>Run any CTA as burned-in text during the payoff, not as a spoken last line. A spoken CTA breaks the loop.</li>
+        </ul>
+      </section>
+
+      <!-- 11 -->
+      <section id="s11">
+        <div class="sec-head"><span class="sec-num">11</span><h2 class="sec-title">ESL delivery constraints</h2></div>
+        <p class="sec-sub">Write words his mouth can land cleanly. The accent is Indonesian-English, so pick words that record clean on the first take.</p>
+        <ul class="clean">
+          <li><b>Avoid final consonant clusters</b> where a synonym exists: prefer "the price" over "the costs," "find" over "find out," "think about" over "think through." Prefer "exactly" over "exact," "we shipped it" over "shipped" as a sentence-ending stop.</li>
+          <li><b>Avoid v/f/b pile-ups in one clause.</b> "Proven very profitable" is a tongue trap, break it up. Proper nouns starting B/P/F sit alone, not next to similar sounds.</li>
+          <li><b>Avoid 4+ syllable formal words:</b> systematically, fundamentally, predominantly, nevertheless. Use "mostly," "a lot," "still."</li>
+          <li><b>Keep sentences short enough to deliver with correct stress.</b> Mark the one stressed word per sentence. One high-effort word per sentence, max.</li>
+        </ul>
+        <table>
+          <thead><tr><th style="color:var(--accent)">Prefer</th><th style="color:var(--danger)">Over</th></tr></thead>
+          <tbody>
+            <tr><td>clean / solid</td><td>perfectly</td></tr>
+            <tr><td>just / exactly</td><td>specifically</td></tr>
+            <tr><td>making money / covers cost</td><td>profitable</td></tr>
+            <tr><td>show / here's the number</td><td>prove</td></tr>
+            <tr><td>honestly / look</td><td>frankly</td></tr>
+            <tr><td>hard / the problem is</td><td>frustrating</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- 12 -->
+      <section id="s12">
+        <div class="sec-head"><span class="sec-num">12</span><h2 class="sec-title">The gut-check</h2></div>
+        <p class="sec-sub">Run before calling a script done. Read the whole thing out loud at talking speed, then tick these off.</p>
+        <div class="checklist">
+          <label><input type="checkbox"><span class="ck-body"><b>Stranger test</b> — would this make sense to someone who's never met him? No insider names without a one-line gloss.</span></label>
+          <label><input type="checkbox"><span class="ck-body"><b>Numbers</b> — is any rupiah/revenue figure <i>spoken</i>? Move it to the screen. Are spoken numbers only counts and dates?</span></label>
+          <label><input type="checkbox"><span class="ck-body"><b>The close</b> — is it ending on a thing, or announcing a lesson? Could it be a poster caption? Kill it if so.</span></label>
+          <label><input type="checkbox"><span class="ck-body"><b>Staccato check</b> — are there 3+ clipped fragments in a row? Chain some into real sentences.</span></label>
+          <label><input type="checkbox"><span class="ck-body"><b>AI tells</b> — em dashes, "it's not X it's Y," perfect triplets, essay transitions, guru words. Purge.</span></label>
+          <label><input type="checkbox"><span class="ck-body"><b>Specificity</b> — does every claim have an object, number, or date?</span></label>
+          <label><input type="checkbox"><span class="ck-body"><b>The Listy test</b> — does it sound like the man in the journal, or more polished/abstract? If polished, cut until it sounds like him.</span></label>
+          <label><input type="checkbox"><span class="ck-body"><b>Loop</b> — does the hook open something the payoff closes? If the hook gives it away, rewrite.</span></label>
+        </div>
+        <p style="color:var(--accent);font-weight:600;">If it passes all 8, it's ready to shoot.</p>
+      </section>
+
+      <!-- 13 -->
+      <section id="s13">
+        <div class="sec-head"><span class="sec-num">13</span><h2 class="sec-title">A worked example</h2></div>
+        <p class="sec-sub">The target. Failure pillar, fail-story hook, 45s. He closed a satellite restaurant (SaraFun).</p>
+        <div class="specimen">
+          <div class="spec-brief">
+            <span class="b"><b>Pillar:</b> failure</span>
+            <span class="b"><b>Hook:</b> fail-story</span>
+            <span class="b"><b>Length:</b> 45s</span>
+          </div>
+
+          <h3>Hooks (5, picked #2)</h3>
+          <ol class="hooks">
+            <li>I closed a restaurant this year. Here's the part nobody posts.</li>
+            <li class="chosen">I shut one of my shops down in April. Best money I didn't keep spending.<span class="pick">chosen</span></li>
+            <li>Everyone says don't quit. I quit a whole restaurant. On purpose.</li>
+            <li>This shop was open four months. Then I killed it.</li>
+            <li>The mistake wasn't opening it. It was opening it without one guy.</li>
+          </ol>
+
+          <h3>Voiceover</h3>
+          <div class="vo">I shut one of my shops down in April. <em>(beat)</em> Four months open. Then I closed it. Not because it lost money. Because I opened it before I had the one person who runs a kitchen when I'm not there. So every problem came straight to my phone. Supplier's late, my phone. Cook quits, my phone. I was running it from a different city, which, yeah, that's on me. The main shop was fine the whole time, because that one <em>has</em> the guy. So I added it up, and closing was cheaper than keeping it on life support. Two cooks from the closed one moved to the main kitchen. They start Monday.</div>
+
+          <h3>On-screen</h3>
+          <p>Pinned <q class="said">Closed a shop. On purpose.</q> · proof shot = the closure math / final P&amp;L with the number circled (NOT spoken) · throwback photo of the shop's day-1.</p>
+
+          <div class="why">
+            <div class="callout do">
+              <div class="c-head"><span class="ic">✓</span> Why it works</div>
+              <p>The number lives on screen, and the voice only carries counts and dates ("four months," "April," "Monday"). The loop ("best money I didn't keep spending") resolves at "cheaper than keeping it on life support." And the close ends on a <b>concrete fact</b>, two cooks starting Monday, not a lesson. No "the real lesson is hire first." The viewer assembles that themselves.</p>
+            </div>
+            <div class="callout no">
+              <div class="c-head"><span class="ic">✕</span> What would've made it AI-y</div>
+              <p>Ending on "Don't open the second shop until the kitchen can run without you." True, but on-the-nose. The script <i>shows</i> it and stops.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer id="foot">
+    <p class="footnote">The 13 files in <code>researchnotes/</code> are the evidence and this page is the distillation. When research and habit pull in different directions, follow this file. When this file is silent on something, go back to the research.</p>
+  </footer>
+
+<script>
+(function () {
+  "use strict";
+
+  // reading-progress bar
+  var bar = document.getElementById("bar");
+  function onScroll() {
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%";
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
+  // scroll-spy: highlight the section currently in view
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.toc a"));
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var sections = Array.prototype.slice.call(document.querySelectorAll("main section"));
+
+  function setActive(id) {
+    links.forEach(function (a) { a.classList.remove("active"); });
+    if (map[id]) {
+      map[id].classList.add("active");
+      // keep the active item visible within the sticky nav
+      if (window.innerWidth > 900) map[id].scrollIntoView({ block: "nearest" });
+    }
+  }
+
+  if ("IntersectionObserver" in window) {
+    var visible = {};
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { visible[e.target.id] = e.isIntersecting ? e.intersectionRatio : 0; });
+      var best = null, bestR = 0;
+      sections.forEach(function (s) {
+        var r = visible[s.id] || 0;
+        if (r > bestR) { bestR = r; best = s.id; }
+      });
+      if (best) setActive(best);
+    }, { rootMargin: "-15% 0px -65% 0px", threshold: [0, 0.25, 0.5, 1] });
+    sections.forEach(function (s) { obs.observe(s); });
+  }
+  setActive("s0");
+})();
+</script>
+</body>
+</html>
