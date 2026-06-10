@@ -21,8 +21,9 @@ Three ways to look at the same scripts:
 And on any script:
 
 - **Full view** to read it fullscreen, distraction-free.
-- **PDF / Print** to get a plain black-on-white A4 copy (it auto-sizes the text so you don't
-  print a page with one lonely sentence on it).
+- **PDF / Print** to get a plain black-on-white A4 shoot sheet — just the hook, beat sheet,
+  voiceover, on-screen text, B-roll and caption (the hook brainstorm and notes stay on
+  screen). If it barely spills onto page two, the text shrinks a touch to fit one page.
 - **Copy voiceover** to grab just the clean read for your teleprompter.
 
 On a phone the screen stays clear — pillars, statuses, search and views all live behind the

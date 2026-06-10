@@ -54,6 +54,24 @@
   .blob.b3 { width: 480px; height: 480px; left: 36%; bottom: -280px; background: rgba(164,143,216,.06); animation: drift1 88s ease-in-out infinite alternate-reverse; }
   @keyframes drift1 { from { transform: translate(0,0) scale(1); } to { transform: translate(120px, 70px) scale(1.12); } }
   @keyframes drift2 { from { transform: translate(0,0) scale(1.06); } to { transform: translate(-110px, 90px) scale(.96); } }
+  /* brushed metal: a real tiled texture image (assets/), drifting very slowly */
+  .metal {
+    position: fixed; inset: 0; z-index: -2; pointer-events: none;
+    background: url("assets/brushed-alum-dark.png") repeat;
+    opacity: .20; mix-blend-mode: overlay;
+    animation: metal-pan 220s linear infinite;
+  }
+  @keyframes metal-pan { from { background-position: 0 0; } to { background-position: 800px 400px; } }
+  /* a slow light beam sweeping across the metal */
+  .beam {
+    position: fixed; left: 50%; top: 50%; width: 170vmax; height: 170vmax; margin: -85vmax 0 0 -85vmax;
+    z-index: -2; pointer-events: none; mix-blend-mode: screen;
+    background: conic-gradient(from 0deg at 50% 50%,
+      transparent 0deg, rgba(170,185,205,.04) 28deg, rgba(232,236,242,.075) 42deg, rgba(170,185,205,.04) 56deg, transparent 84deg,
+      transparent 176deg, rgba(205,185,140,.035) 206deg, transparent 244deg, transparent 360deg);
+    animation: beam-spin 80s linear infinite;
+  }
+  @keyframes beam-spin { to { transform: rotate(360deg); } }
   .grain { position: fixed; inset: 0; z-index: -2; pointer-events: none; opacity: .5; mix-blend-mode: overlay;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
   }
@@ -351,6 +369,10 @@
 
   /* ---------- phone mode ---------- */
   @media (max-width: 860px) {
+    /* lighter compositing on phones: fewer blurred layers, no animated beam */
+    .beam, .blob.b3 { display: none; }
+    .blob { filter: blur(70px); }
+    .metal { animation: none; }
     header { padding: 13px 18px 12px; gap: 12px; }
     .head-stats, .filters, .glink.desk { display: none; }
     .burger { display: block; }
@@ -400,6 +422,8 @@
 <body>
   <div class="bg-base"></div>
   <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+  <div class="metal"></div>
+  <div class="beam"></div>
   <div class="grain"></div>
 
   <header>
@@ -819,36 +843,45 @@
   }
 
   /* ============================== print / PDF ============================== */
-  /* Renders the script into a hidden A4-width column, then tries a few font
-     scales and keeps the one that fills the fewest pages most fully — so a
-     45s script doesn't spill 3 lines onto a lonely page 2. */
+  /* Prints a shoot sheet, not the whole document: title, chosen hook, beat
+     sheet, voiceover, on-screen text, B-roll, proof shot, caption. The hook
+     brainstorm and notes stay on screen. */
+  const PRINT_KEEP = [/beat sheet/i, /voiceover/i, /on-?screen/i, /b-?roll/i, /proof/i, /caption/i];
+  function printableBody(s) {
+    const parts = (s.body || "").replace(/\r/g, "").split(/\n(?=##\s)/);
+    const kept = [];
+    let hook = "";
+    for (const part of parts) {
+      const m = part.match(/^##\s+(.+)/);
+      if (!m) continue;
+      if (/hooks/i.test(m[1])) {
+        const ch = part.match(/\*\*Chosen hook:\*\*\s*(.+)/i);
+        if (ch && !/^TBD\b/i.test(ch[1].trim())) hook = ch[1].trim();
+        continue;
+      }
+      if (PRINT_KEEP.some(r => r.test(m[1]))) kept.push(part);
+    }
+    if (!kept.length) return md(s.body); // unfamiliar shape → print everything
+    return (hook ? '<blockquote><strong>Hook:</strong> ' + esc(hook) + "</blockquote>" : "") + md(kept.join("\n\n"));
+  }
   function printScript(s) {
     const info = pillarOf(s.pillar);
     const st = STATUSES.find(x => x.key === s.status) || { label: s.status };
-    const meta = [info.label, st.label, s.length, s.hook_type, s.created ? "created " + s.created : ""].filter(Boolean).join("  ·  ");
+    const meta = [info.label, st.label, s.length, s.hook_type].filter(Boolean).join("  ·  ");
     const root = document.getElementById("printRoot");
     root.innerHTML =
       '<div class="p-title">' + esc(s.title) + "</div>" +
-      '<div class="p-meta">SCRIPT BANK &nbsp;—&nbsp; ' + esc(meta) + "</div>" + md(s.body);
+      '<div class="p-meta">SCRIPT BANK &nbsp;—&nbsp; ' + esc(meta) + "</div>" + printableBody(s);
 
-    // px per mm, measured live so zoom/DPI don't break the math
+    // one simple rule: if it barely spills onto page 2, shrink to fit page 1
     const probe = document.createElement("div");
     probe.style.cssText = "width:100mm;height:1px;position:absolute;left:-300vw;visibility:hidden";
     document.body.appendChild(probe);
-    const pxPerMm = probe.getBoundingClientRect().width / 100;
+    const pageH = (297 - 26) * probe.getBoundingClientRect().width / 100; // A4 minus margins
     probe.remove();
-    const pageH = (297 - 26) * pxPerMm; // A4 minus 13mm top/bottom margins
-
-    let best = { pages: Infinity, scale: 1, fill: 0 };
-    [1, 0.95, 0.9, 0.85, 0.8, 0.75].forEach(sc => {
-      root.style.setProperty("--pscale", sc);
-      const h = root.scrollHeight;
-      const pages = Math.max(1, Math.ceil(h / pageH));
-      const fill = h / (pages * pageH);
-      // fewer pages always wins; same pages → biggest type wins
-      if (pages < best.pages) best = { pages, scale: sc, fill };
-    });
-    root.style.setProperty("--pscale", best.scale);
+    root.style.setProperty("--pscale", 1);
+    const h = root.scrollHeight;
+    root.style.setProperty("--pscale", h > pageH && h < pageH * 1.3 ? Math.max(0.78, pageH / h - 0.02) : 1);
 
     const old = document.title;
     document.title = s.id || "script";
@@ -898,7 +931,8 @@
   function makeGraph() {
     const canvas = document.getElementById("graphCanvas");
     const ctx = canvas.getContext("2d");
-    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    // cap pixel density on phones — full retina canvas is the main battery/jank cost
+    const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, isMobile() ? 1.5 : 2));
     const tipEl = document.getElementById("tip");
 
     function rnd(n) { return (Math.random() - 0.5) * n; }
@@ -1144,9 +1178,9 @@
     function refresh() {}
 
     function toWorld(e) { const r = canvas.getBoundingClientRect(), sx = e.clientX - r.left, sy = e.clientY - r.top; return { sx, sy, wx: (sx - cam.x) / cam.s, wy: (sy - cam.y) / cam.s }; }
-    function pick(wx, wy) {
+    function pick(wx, wy, slop) {
       let best = null, bd = Infinity;
-      for (const n of nodes) { const d = Math.hypot(n.x - wx, n.y - wy); if (d <= n.r + 6 && d < bd) { bd = d; best = n; } }
+      for (const n of nodes) { const d = Math.hypot(n.x - wx, n.y - wy); if (d <= n.r + (slop || 6) && d < bd) { bd = d; best = n; } }
       return best;
     }
     function showTip(n, e) {
@@ -1166,15 +1200,36 @@
     }
     function hideTip() { tipEl.classList.remove("show"); }
 
+    /* pointers: mouse + touch. Fat finger slop on touch, two fingers = pinch zoom. */
+    const ptrs = new Map();
+    let pinch = null;
+    function pinchInfo() {
+      const [a, b] = [...ptrs.values()];
+      return { d: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
+    }
     canvas.addEventListener("pointerdown", e => {
       canvas.setPointerCapture(e.pointerId);
+      ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (ptrs.size === 2) { dragNode = null; panning = false; pinch = pinchInfo(); hideTip(); return; }
       const { wx, wy, sx, sy } = toWorld(e); down = { sx, sy }; moved = false;
-      const n = pick(wx, wy);
+      const slop = e.pointerType === "touch" ? 22 / cam.s : 6;
+      const n = pick(wx, wy, slop);
       if (n && n.type === "script") { dragNode = n; alpha = Math.max(alpha, 0.4); }
       else if (n && n.type === "hub") { dragNode = n; /* click only */ }
       else { panning = true; canvas.classList.add("grabbing"); }
     });
     canvas.addEventListener("pointermove", e => {
+      if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinch && ptrs.size === 2) {
+        const now = pinchInfo(), r = canvas.getBoundingClientRect();
+        const sx = now.mx - r.left, sy = now.my - r.top;
+        const wx = (sx - cam.x) / cam.s, wy = (sy - cam.y) / cam.s;
+        cam.s = clamp(cam.s * (now.d / (pinch.d || 1)), 0.25, 4);
+        cam.x = sx - wx * cam.s + (now.mx - pinch.mx);
+        cam.y = sy - wy * cam.s + (now.my - pinch.my);
+        pinch = now; userCam = true; moved = true;
+        return;
+      }
       if (dragNode && dragNode.type === "script") { const { wx, wy } = toWorld(e); dragNode.x = wx; dragNode.y = wy; moved = true; alpha = Math.max(alpha, 0.4); userCam = true; hideTip(); return; }
       if (panning) { const { sx, sy } = toWorld(e); cam.x += sx - down.sx; cam.y += sy - down.sy; down.sx = sx; down.sy = sy; moved = true; userCam = true; hideTip(); return; }
       if (!running) return;
@@ -1182,15 +1237,21 @@
       if (id !== hoverId) { hoverId = id; canvas.style.cursor = n ? "pointer" : "grab"; }
       if (n && n.type === "script" && e.pointerType === "mouse") showTip(n, e); else hideTip();
     });
-    canvas.addEventListener("pointerup", e => {
-      if (dragNode && !moved) {
-        if (dragNode.type === "script") openScript(dragNode.id);
-        else { const p = dragNode.pillar; state.pillars.has(p) ? state.pillars.delete(p) : state.pillars.add(p); renderChips(); rerender(); persist(); }
-      } else if (panning && !moved && (state.pillars.size || state.statuses.size)) {
-        state.pillars.clear(); state.statuses.clear(); renderChips(); rerender(); persist();
+    function endPointer(e) {
+      ptrs.delete(e.pointerId);
+      if (ptrs.size < 2) pinch = null;
+      if (e.type === "pointerup" && !pinch) {
+        if (dragNode && !moved) {
+          if (dragNode.type === "script") openScript(dragNode.id);
+          else { const p = dragNode.pillar; state.pillars.has(p) ? state.pillars.delete(p) : state.pillars.add(p); renderChips(); rerender(); persist(); }
+        } else if (panning && !moved && (state.pillars.size || state.statuses.size)) {
+          state.pillars.clear(); state.statuses.clear(); renderChips(); rerender(); persist();
+        }
       }
       dragNode = null; panning = false; canvas.classList.remove("grabbing");
-    });
+    }
+    canvas.addEventListener("pointerup", endPointer);
+    canvas.addEventListener("pointercancel", endPointer);
     canvas.addEventListener("pointerleave", hideTip);
     canvas.addEventListener("wheel", e => {
       e.preventDefault(); userCam = true;
